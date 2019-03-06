@@ -1,0 +1,2 @@
+# currybot
+Discord CurryBot
