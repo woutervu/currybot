@@ -9,8 +9,8 @@ var voiceChannel = null;
 var globalConnection = null;
 var timeOut = null;
 var dispatcherInstance = null;
-var curryBotChannel = '551773458028036107';
 const config = require("./config.json");
+var curryBotChannel = config.channelId;
 
 bot.on('ready', () => {
     console.log('CurryBot initiated.');
