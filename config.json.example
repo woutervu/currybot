@@ -1,4 +1,5 @@
 {
   "token": "SUPERSECRETTOKEN",
-  "audio_folder": "./audio/"
+  "audio_folder": "./audio/",
+  "channelId": "1234712374127347"
 }
