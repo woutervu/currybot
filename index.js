@@ -62,8 +62,9 @@ function playSoundByMessage(message) {
 function playSound(name) {
     fs.readFile('./audio.json', 'utf8', function (err, data) {
         if (err) throw err;
-        var audio = JSON.parse(data);
-        if (audio[name]) {
+        let audio = JSON.parse(data);
+
+        let triggerSound = function(name) {
             var connection = getConnection();
             getAudioDurationInSeconds(config.audio_folder + audio[name]).then((duration) => {
                 const dispatcher = connection.playFile(config.audio_folder + audio[name]);
@@ -74,6 +75,24 @@ function playSound(name) {
                     dispatcher.end()
                 },duration * 1000 + 300);
             });
+        };
+
+        if (audio[name]) {
+            triggerSound(name);
+        }
+        else {
+            let BreakException = {};
+            let triggerKey;
+            try {
+                Object.keys(audio).forEach(function(k) {
+                    if (name.includes(k)) {
+                        triggerKey = k;
+                        throw BreakException;
+                    }
+                });
+            } catch (e) {
+                triggerSound(triggerKey);
+            }
         }
     });
 }
