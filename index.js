@@ -104,10 +104,6 @@ function clearDispatcher() {
         dispatcherInstance.end();
         dispatcherInstance = null;
     }
-    if (timeOut) {
-        console.log('Clearing timer.');
-        clearTimer();
-    }
 }
 
 /**
@@ -125,28 +121,6 @@ function availableSounds(message) {
         });
         message.reply(sounds);
     });
-}
-
-/**
- * Clear any current timer and set new one.
- *
- * @param handler
- * @param duration
- */
-function setTimer(handler, duration) {
-    if (timeOut) {
-        clearTimeout(timeOut);
-    }
-    timeOut = setTimeout(handler, duration);
-}
-
-/**
- * Clear active timer object.
- */
-function clearTimer() {
-    if (timeOut) {
-        clearTimeout(timeOut);
-    }
 }
 
 /**
