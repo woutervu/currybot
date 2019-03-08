@@ -1,24 +1,20 @@
 var Discord = require('discord.js');
 var fs = require('fs');
 var bot = new Discord.Client();
-const { getAudioDurationInSeconds } = require('get-audio-duration');
 
-
-var isReady = true;
-var voiceChannel = null;
-var globalConnection = null;
-var timeOut = null;
-var dispatcherInstance = null;
+let voiceChannel = null;
+let globalConnection = null;
+let timeOut = null;
+let dispatcherInstance = null;
 const config = require("./config.json");
-var curryBotChannel = config.channelId;
+let curryBotChannel = config.channelId;
 
 bot.on('ready', () => {
     console.log('CurryBot initiated.');
 });
 
 bot.on('message', message => {
-    // Only listen to currybot channel.
-    if (message.channel.id === curryBotChannel && isReady)
+    if (message.channel.id === curryBotChannel)
     {
         switch (message.content) {
             case 'CB init':
@@ -47,15 +43,13 @@ bot.on('message', message => {
  * @param message
  */
 function playSoundByMessage(message) {
-    if (isReady)
-    {
-        isReady = false;
+    if (!message.author.bot) {
         playSound(message.content);
-        isReady = true;
     }
 }
 
 /**
+ * Play sound by trigger word (with soft matching).
  *
  * @param name
  */
@@ -64,21 +58,8 @@ function playSound(name) {
         if (err) throw err;
         let audio = JSON.parse(data);
 
-        let triggerSound = function(name) {
-            var connection = getConnection();
-            getAudioDurationInSeconds(config.audio_folder + audio[name]).then((duration) => {
-                const dispatcher = connection.playFile(config.audio_folder + audio[name]);
-                dispatcher.on("end", end => {
-                    console.log('Playing sound: ' + audio[name]);
-                });
-                setTimer(function() {
-                    dispatcher.end()
-                },duration * 1000 + 300);
-            });
-        };
-
         if (audio[name]) {
-            triggerSound(name);
+            dispatchSound(audio[name]);
         }
         else {
             let BreakException = {};
@@ -91,17 +72,53 @@ function playSound(name) {
                     }
                 });
             } catch (e) {
-                triggerSound(triggerKey);
+                dispatchSound(audio[triggerKey]);
             }
         }
     });
 }
 
+/**
+ * Sound dispatcher that ensures previous dispatcher is ended.
+ *
+ * @param filename
+ */
+function dispatchSound(filename) {
+    let connection = getConnection();
+
+    if (dispatcherInstance) {
+        clearDispatcher();
+    }
+
+    dispatcherInstance = connection.playFile(config.audio_folder + filename);
+    dispatcherInstance.on("start", start => {
+        console.log('Playing sound: ' + filename);
+    });
+}
+
+/**
+ * End the dispatcher to stop playing of sounds.
+ */
+function clearDispatcher() {
+    if (dispatcherInstance) {
+        dispatcherInstance.end();
+        dispatcherInstance = null;
+    }
+    if (timeOut) {
+        console.log('Clearing timer.');
+        clearTimer();
+    }
+}
+
+/**
+ * Get the available sounds.
+ *
+ * @param message
+ */
 function availableSounds(message) {
-    // Tell what sounds are available.
     fs.readFile('./audio.json', 'utf8', function (err, data) {
         if (err) throw err;
-        var audio = JSON.parse(data);
+        let audio = JSON.parse(data);
         let sounds = "Soundboard currently contains: \n";
         Object.keys(audio).forEach(function(key) {
            sounds += key + "\n"
@@ -112,6 +129,7 @@ function availableSounds(message) {
 
 /**
  * Clear any current timer and set new one.
+ *
  * @param handler
  * @param duration
  */
@@ -123,7 +141,17 @@ function setTimer(handler, duration) {
 }
 
 /**
+ * Clear active timer object.
+ */
+function clearTimer() {
+    if (timeOut) {
+        clearTimeout(timeOut);
+    }
+}
+
+/**
  * Set voice channel globally.
+ *
  * @param message
  */
 function ensureVoiceChannel(message) {
@@ -131,6 +159,7 @@ function ensureVoiceChannel(message) {
 }
 
 /**
+ * Set the global connection.
  *
  * @param connection
  */
@@ -139,36 +168,39 @@ function setConnection(connection) {
 }
 
 /**
+ * Get the active connection.
  *
- * @returns {*}
+ * @returns globalConnection
  */
 function getConnection() {
     return globalConnection;
 }
 
 /**
+ * Initialize connection.
  *
  * @param message
  */
 function init(message) {
-    isReady = false;
+    voiceChannel = null;
     ensureVoiceChannel(message);
     voiceChannel.join().then(connection =>
     {
         setConnection(connection);
     }).catch(err => console.log(err));
-    isReady = true;
 }
 
 /**
- *
+ * Leave the active channel.
  */
 function leave() {
-    isReady = false;
     if (voiceChannel) {
         voiceChannel.leave();
     }
-    isReady = true;
 }
 
-bot.login(config.token);
+bot.login(config.token)
+    .then(() => {
+        console.log('Successfully logged in CurryBot.')
+    }).catch(err => console.log(err));
+
