@@ -91,7 +91,7 @@ function dispatchSound(filename) {
     }
 
     dispatcherInstance = connection.playFile(config.audio_folder + filename);
-    dispatcherInstance.on("start", start => {
+    dispatcherInstance.on("start", () => {
         console.log('Playing sound: ' + filename);
     });
 }
