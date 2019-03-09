@@ -1,16 +1,21 @@
-var Discord = require('discord.js');
-var fs = require('fs');
-var bot = new Discord.Client();
+const Discord = require('discord.js');
+const fs = require('fs');
+const bot = new Discord.Client();
+const config = require("./config.json");
+const md5File = require('md5-file');
+const audioJson = 'audio.json';
 
 let voiceChannel = null;
 let globalConnection = null;
-let timeOut = null;
 let dispatcherInstance = null;
-const config = require("./config.json");
+let audioFileHash;
+let audio;
 let curryBotChannel = config.channelId;
 
 bot.on('ready', () => {
     console.log('CurryBot initiated.');
+    updateAudio();
+    setInterval(updateAudio, 60000);
 });
 
 bot.on('message', message => {
@@ -54,28 +59,24 @@ function playSoundByMessage(message) {
  * @param name
  */
 function playSound(name) {
-    fs.readFile('./audio.json', 'utf8', function (err, data) {
-        if (err) throw err;
-        let audio = JSON.parse(data);
-
-        if (audio[name]) {
-            dispatchSound(audio[name]);
+    let nameLC = name.toLowerCase();
+    if (audio[nameLC]) {
+        dispatchSound(audio[nameLC]);
+    }
+    else {
+        let BreakException = {};
+        let triggerKey;
+        try {
+            Object.keys(audio).forEach(function(k) {
+                if (nameLC.includes(k)) {
+                    triggerKey = k;
+                    throw BreakException;
+                }
+            });
+        } catch (e) {
+            dispatchSound(audio[triggerKey]);
         }
-        else {
-            let BreakException = {};
-            let triggerKey;
-            try {
-                Object.keys(audio).forEach(function(k) {
-                    if (name.includes(k)) {
-                        triggerKey = k;
-                        throw BreakException;
-                    }
-                });
-            } catch (e) {
-                dispatchSound(audio[triggerKey]);
-            }
-        }
-    });
+    }
 }
 
 /**
@@ -171,6 +172,31 @@ function leave() {
     if (voiceChannel) {
         voiceChannel.leave();
     }
+}
+
+/**
+ * Check the md5 hash of the audio JSON and update if necessary.
+ */
+function updateAudio() {
+    md5File(audioJson, (err, hash) => {
+       if (err) console.log(err);
+
+       if (audioFileHash !== hash) {
+           console.log('JSON file changed. Updating audio.');
+           parseAudioJson();
+           audioFileHash = hash;
+       }
+    });
+}
+
+/**
+ * Parse the audio JSON file.
+ */
+function parseAudioJson() {
+    fs.readFile(audioJson, 'utf8', function (err, data) {
+        if (err) throw err;
+        audio = JSON.parse(data);
+    });
 }
 
 bot.login(config.token)
