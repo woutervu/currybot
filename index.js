@@ -48,7 +48,7 @@ bot.on('message', message => {
  * @param message
  */
 function playSoundByMessage(message) {
-    if (!message.author.bot) {
+    if (!message.author.bot && getVoiceChannel() === message.member.voiceChannel) {
         playSound(message.content);
     }
 }
@@ -80,31 +80,18 @@ function playSound(name) {
 }
 
 /**
- * Sound dispatcher that ensures previous dispatcher is ended.
+ * Sound dispatcher that plays sound.
  *
  * @param filename
  */
 function dispatchSound(filename) {
     let connection = getConnection();
-
-    if (dispatcherInstance) {
-        clearDispatcher();
-    }
-
     dispatcherInstance = connection.playFile(config.audio_folder + filename);
     dispatcherInstance.on("start", () => {
+        // Reset pausedTime to prevent incrementing delay.
+        connection.player.streamingData.pausedTime = 0;
         console.log('Playing sound: ' + filename);
     });
-}
-
-/**
- * End the dispatcher to stop playing of sounds.
- */
-function clearDispatcher() {
-    if (dispatcherInstance) {
-        dispatcherInstance.end();
-        dispatcherInstance = null;
-    }
 }
 
 /**
@@ -131,6 +118,16 @@ function availableSounds(message) {
  */
 function ensureVoiceChannel(message) {
     voiceChannel = message.member.voiceChannel;
+}
+
+/**
+ * Get the active voiceChannel.
+ *
+ * @return voiceChannel
+ */
+function getVoiceChannel() {
+    // @todo: get the actual voice channel, CurryBot may have been moved?
+    return voiceChannel;
 }
 
 /**
