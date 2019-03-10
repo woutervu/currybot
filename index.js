@@ -2,48 +2,55 @@ const Discord = require('discord.js');
 const fs = require('fs');
 const bot = new Discord.Client();
 const config = require("./config.json");
-const md5File = require('md5-file');
 const audioJson = 'audio.json';
 const statsJson = 'stats.json';
 
 let voiceChannel = null;
 let globalConnection = null;
 let dispatcherInstance = null;
-let audioFileHash;
 let audio;
 let curryBotChannel = config.channelId;
 let stats = [];
 
 bot.on('ready', () => {
     console.log('CurryBot initiated.');
-    updateAudio();
-    setInterval(updateAudio, 5000);
+    parseAudioJson();
+    setInterval(parseAudioJson, 10000);
 });
 
 bot.on('message', message => {
     if (message.channel.id === curryBotChannel)
     {
+        let commandMatch = false;
         let contentLC = message.content.toLowerCase();
         switch (contentLC) {
             case 'cb init':
                 init(message);
+                commandMatch = true;
                 break;
             case 'cb exit':
                 leave();
+                commandMatch = true;
                 break;
             case 'cb reboot':
                 leave();
                 init(message);
+                commandMatch = true;
                 break;
             case 'sounds':
                 availableSounds(message);
+                commandMatch = true;
                 break;
             case 'stats':
                 printStats(message);
+                commandMatch = true;
                 break;
             default:
                 playSoundByMessage(message);
+        }
 
+        if (commandMatch) {
+            deleteMessage(message);
         }
     }
 });
@@ -55,25 +62,28 @@ bot.on('message', message => {
  */
 function playSoundByMessage(message) {
     if (!message.author.bot && getVoiceChannel() === message.member.voiceChannel) {
-        playSound(message.content, message.member.id);
+        playSound(message, message.member.id);
     }
 }
 
 /**
  * Play sound by trigger word (with soft matching).
  *
- * @param name
+ * @param message
+ * @param userId
  */
-function playSound(name, userId) {
+function playSound(message, userId) {
+    let name = message.content;
     let nameLC = name.toLowerCase();
     let dispatched = false;
+    let triggerKey;
     if (audio[nameLC]) {
-        dispatchSound(audio[nameLC]);
+        triggerKey = nameLC;
+        dispatchSound(audio[triggerKey]);
         dispatched = true;
     }
     else {
         let BreakException = {};
-        let triggerKey;
         try {
             Object.keys(audio).forEach(function(k) {
                 if (nameLC.includes(k)) {
@@ -88,7 +98,8 @@ function playSound(name, userId) {
     }
 
     if (dispatched) {
-        updateStats(nameLC, userId);
+        updateStats(triggerKey, userId);
+        message.delete(5000);
     }
 }
 
@@ -121,10 +132,42 @@ function availableSounds(message) {
         Object.keys(audio).forEach(function(key) {
            sounds += key + "\n"
         });
-        message.reply(sounds);
+        message.reply(sounds).then(function(reply) {
+            cleanupReplies(reply, message.author.id);
+        }).catch(err => console.log(err));
     });
 }
 
+/**
+ * Cleanup replies that excludes the given message and matches on replies to userId.
+ *
+ * @param message
+ * @param userId
+ */
+function cleanupReplies(message, userId) {
+    console.log("Don't delete: " + message.id);
+    bot.channels.get(curryBotChannel).fetchMessages().then(function(messages) {
+        messages.forEach(function (msg) {
+            if (msg.author.bot && msg.id !== message.id && msg.mentions.users.first()) {
+                if (msg.mentions.users.first().id === userId) {
+                    msg.delete().then(function() {
+                        console.log(msg.id + " deleted.");
+                    }).catch(err => console.log(err));
+                }
+                console.log(msg.mentions.users.first());
+                // msg.delete().then(function() {
+                //     console.log(msg.id + " deleted.");
+                // }).catch(err => console.log(err));
+            }
+        })
+    }).catch(err => console.log(err));
+}
+
+/**
+ * Print user stats.
+ *
+ * @param message
+ */
 function printStats(message) {
     getStats().then(function(statistics) {
         let msg = "";
@@ -155,19 +198,16 @@ function getStats() {
     return new Promise(function (resolve, reject) {
         try {
             if (fs.existsSync(statsJson)) {
-                console.log('Stats file exists.');
                 fs.readFile(statsJson, 'utf8', function (err, data) {
-                    if (err) resolve(err);
+                    if (err) reject(err);
                     stats = JSON.parse(data);
                     resolve(stats);
                 });
             }
             else {
-                console.log('Writing new stats.json');
                 let json = {};
                 fs.writeFile(statsJson, JSON.stringify(json), 'utf8', function (err) {
                     if (err) reject(err);
-                    console.log(err);
                     stats = json;
                     resolve(stats);
                 });
@@ -299,21 +339,6 @@ function leave() {
 }
 
 /**
- * Check the md5 hash of the audio JSON and update if necessary.
- */
-function updateAudio() {
-    md5File(audioJson, (err, hash) => {
-       if (err) console.log(err);
-
-       if (audioFileHash !== hash) {
-           console.log('JSON file changed. Updating audio.');
-           parseAudioJson();
-           audioFileHash = hash;
-       }
-    });
-}
-
-/**
  * Parse the audio JSON file.
  */
 function parseAudioJson() {
@@ -334,13 +359,16 @@ function parseAudioJson() {
  * @param newJson
  */
 function compareJson(oldJson, newJson) {
-    let msg = "New sounds added: \n";
+    let newSounds;
     for(let i in newJson) {
         if(!oldJson.hasOwnProperty(i) || newJson[i] !== oldJson[i]) {
-            msg += i + "\n"
+            newSounds += i + "\n"
         }
     }
-    sendToChannel(msg);
+    if (newSounds) {
+        let msg = "New sounds added: \n" + newSounds;
+        sendToChannel(msg);
+    }
 }
 
 /**
@@ -351,8 +379,16 @@ function sendToChannel(msg) {
     bot.channels.get(curryBotChannel).send(msg);
 }
 
+/**
+ * Deletes a message on a timeout.
+ *
+ * @param message
+ */
+function deleteMessage(message) {
+    message.delete(5000);
+}
+
 bot.login(config.token)
     .then(() => {
         console.log('Successfully logged in CurryBot.')
     }).catch(err => console.log(err));
-
