@@ -154,10 +154,6 @@ function cleanupReplies(message, userId) {
                         console.log(msg.id + " deleted.");
                     }).catch(err => console.log(err));
                 }
-                console.log(msg.mentions.users.first());
-                // msg.delete().then(function() {
-                //     console.log(msg.id + " deleted.");
-                // }).catch(err => console.log(err));
             }
         })
     }).catch(err => console.log(err));
