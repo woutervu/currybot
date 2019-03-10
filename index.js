@@ -145,7 +145,6 @@ function availableSounds(message) {
  * @param userId
  */
 function cleanupReplies(message, userId) {
-    console.log("Don't delete: " + message.id);
     bot.channels.get(curryBotChannel).fetchMessages().then(function(messages) {
         messages.forEach(function (msg) {
             if (msg.author.bot && msg.id !== message.id && msg.mentions.users.first()) {
@@ -181,7 +180,9 @@ function printStats(message) {
             userStatsMsg += "Total play count: "+ totalPlayCount;
         }
         msg += userStatsMsg;
-        message.reply(msg);
+        message.reply(msg).then(function (reply) {
+            cleanupReplies(reply, message.author.id);
+        }).catch(err => console.log(err));
     }).catch(err => console.log(err));
 }
 
