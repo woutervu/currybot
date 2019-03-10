@@ -4,6 +4,7 @@ const bot = new Discord.Client();
 const config = require("./config.json");
 const md5File = require('md5-file');
 const audioJson = 'audio.json';
+const statsJson = 'stats.json';
 
 let voiceChannel = null;
 let globalConnection = null;
@@ -12,7 +13,6 @@ let audioFileHash;
 let audio;
 let curryBotChannel = config.channelId;
 let stats = [];
-let statsFile = 'stats.json';
 
 bot.on('ready', () => {
     console.log('CurryBot initiated.');
@@ -23,19 +23,23 @@ bot.on('ready', () => {
 bot.on('message', message => {
     if (message.channel.id === curryBotChannel)
     {
-        switch (message.content) {
-            case 'CB init':
+        let contentLC = message.content.toLowerCase();
+        switch (contentLC) {
+            case 'cb init':
                 init(message);
                 break;
-            case 'CB exit':
+            case 'cb exit':
                 leave();
                 break;
-            case 'CB reboot':
+            case 'cb reboot':
                 leave();
                 init(message);
                 break;
             case 'sounds':
                 availableSounds(message);
+                break;
+            case 'stats':
+                printStats(message);
                 break;
             default:
                 playSoundByMessage(message);
@@ -121,6 +125,27 @@ function availableSounds(message) {
     });
 }
 
+function printStats(message) {
+    getStats().then(function(statistics) {
+        let msg = "";
+        let userId = message.member.id;
+        // let user = getUsernameById(userId);
+        let userStatsMsg = "No stats have been recorded for you yet. Get spammin'! \n";
+        if (statistics.hasOwnProperty(userId)) {
+            userStatsMsg = "You've been spammin', hot dayumn! \n";
+            let totalPlayCount = 0;
+            let userStats = statistics[userId];
+            Object.keys(userStats).forEach(function(k){
+                totalPlayCount += userStats[k];
+                userStatsMsg += k + ": " + userStats[k] + "\n";
+            });
+            userStatsMsg += "Total play count: "+ totalPlayCount;
+        }
+        msg += userStatsMsg;
+        message.reply(msg);
+    }).catch(err => console.log(err));
+}
+
 /**
  * Stats getter that ensures file exists.
  *
@@ -129,9 +154,9 @@ function availableSounds(message) {
 function getStats() {
     return new Promise(function (resolve, reject) {
         try {
-            if (fs.existsSync(statsFile)) {
+            if (fs.existsSync(statsJson)) {
                 console.log('Stats file exists.');
-                fs.readFile(statsFile, 'utf8', function (err, data) {
+                fs.readFile(statsJson, 'utf8', function (err, data) {
                     if (err) resolve(err);
                     stats = JSON.parse(data);
                     resolve(stats);
@@ -140,7 +165,7 @@ function getStats() {
             else {
                 console.log('Writing new stats.json');
                 let json = {};
-                fs.writeFile(statsFile, JSON.stringify(json), 'utf8', function (err) {
+                fs.writeFile(statsJson, JSON.stringify(json), 'utf8', function (err) {
                     if (err) reject(err);
                     console.log(err);
                     stats = json;
@@ -159,7 +184,7 @@ function getStats() {
  * @param statistics
  */
 function setStats(statistics) {
-    fs.writeFile(statsFile, JSON.stringify(statistics), 'utf8', function (err) {
+    fs.writeFile(statsJson, JSON.stringify(statistics), 'utf8', function (err) {
         if (err) throw err;
         console.log(err);
     });
@@ -203,8 +228,14 @@ function updateStats(key, userId) {
     }).catch(err => console.log(err));
 }
 
+/**
+ * Return user by ID.
+ *
+ * @param userId
+ * @return {V}
+ */
 function getUsernameById(userId) {
-    // @todo: get username by Discord user ID.
+    return bot.users.find('id', userId);
 }
 
 /**
