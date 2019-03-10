@@ -11,11 +11,13 @@ let dispatcherInstance = null;
 let audioFileHash;
 let audio;
 let curryBotChannel = config.channelId;
+let stats = [];
+let statsFile = 'stats.json';
 
 bot.on('ready', () => {
     console.log('CurryBot initiated.');
     updateAudio();
-    setInterval(updateAudio, 60000);
+    setInterval(updateAudio, 5000);
 });
 
 bot.on('message', message => {
@@ -49,7 +51,7 @@ bot.on('message', message => {
  */
 function playSoundByMessage(message) {
     if (!message.author.bot && getVoiceChannel() === message.member.voiceChannel) {
-        playSound(message.content);
+        playSound(message.content, message.member.id);
     }
 }
 
@@ -58,10 +60,12 @@ function playSoundByMessage(message) {
  *
  * @param name
  */
-function playSound(name) {
+function playSound(name, userId) {
     let nameLC = name.toLowerCase();
+    let dispatched = false;
     if (audio[nameLC]) {
         dispatchSound(audio[nameLC]);
+        dispatched = true;
     }
     else {
         let BreakException = {};
@@ -75,9 +79,15 @@ function playSound(name) {
             });
         } catch (e) {
             dispatchSound(audio[triggerKey]);
+            dispatched = true;
         }
     }
+
+    if (dispatched) {
+        updateStats(nameLC, userId);
+    }
 }
+
 
 /**
  * Sound dispatcher that plays sound.
@@ -100,7 +110,7 @@ function dispatchSound(filename) {
  * @param message
  */
 function availableSounds(message) {
-    fs.readFile('./audio.json', 'utf8', function (err, data) {
+    fs.readFile(audioJson, 'utf8', function (err, data) {
         if (err) throw err;
         let audio = JSON.parse(data);
         let sounds = "Soundboard currently contains: \n";
@@ -109,6 +119,92 @@ function availableSounds(message) {
         });
         message.reply(sounds);
     });
+}
+
+/**
+ * Stats getter that ensures file exists.
+ *
+ * @return {Promise<JSON>}
+ */
+function getStats() {
+    return new Promise(function (resolve, reject) {
+        try {
+            if (fs.existsSync(statsFile)) {
+                console.log('Stats file exists.');
+                fs.readFile(statsFile, 'utf8', function (err, data) {
+                    if (err) resolve(err);
+                    stats = JSON.parse(data);
+                    resolve(stats);
+                });
+            }
+            else {
+                console.log('Writing new stats.json');
+                let json = {};
+                fs.writeFile(statsFile, JSON.stringify(json), 'utf8', function (err) {
+                    if (err) reject(err);
+                    console.log(err);
+                    stats = json;
+                    resolve(stats);
+                });
+            }
+        } catch(err) {
+            console.error(err);
+        }
+    });
+}
+
+/**
+ * Write stats to disk.
+ *
+ * @param statistics
+ */
+function setStats(statistics) {
+    fs.writeFile(statsFile, JSON.stringify(statistics), 'utf8', function (err) {
+        if (err) throw err;
+        console.log(err);
+    });
+}
+
+/**
+ * Update stats per user/trigger.
+ *
+ * @param key
+ * @param userId
+ */
+function updateStats(key, userId) {
+    getStats().then(function(statistics) {
+        // Get current play count.
+        let updates = {};
+        let initialUpdate = {
+            [userId]: {
+                [key]: 1,
+            },
+        };
+
+        if (!statistics.hasOwnProperty(userId)) {
+            // No records for current user yet, apply updates.
+            updates = initialUpdate;
+        }
+        else {
+            // We have a record for userId.
+            if (statistics[userId].hasOwnProperty(key)) {
+                // We have a record for key, up play count.
+                updates[userId] = statistics[userId];
+                updates[userId][key] += 1;
+            }
+            else {
+                // We don't have a record for key.
+                updates[userId] = statistics[userId];
+                updates[userId][key] = 1;
+            }
+        }
+        statistics = {...statistics, ...updates};
+        setStats(statistics);
+    }).catch(err => console.log(err));
+}
+
+function getUsernameById(userId) {
+    // @todo: get username by Discord user ID.
 }
 
 /**
@@ -192,8 +288,36 @@ function updateAudio() {
 function parseAudioJson() {
     fs.readFile(audioJson, 'utf8', function (err, data) {
         if (err) throw err;
-        audio = JSON.parse(data);
+        let newJson = JSON.parse(data);
+        if (audio) {
+            compareJson(audio, newJson);
+        }
+        audio = newJson;
     });
+}
+
+/**
+ * Broadcast new sounds added to the soundboard.
+ *
+ * @param oldJson
+ * @param newJson
+ */
+function compareJson(oldJson, newJson) {
+    let msg = "New sounds added: \n";
+    for(let i in newJson) {
+        if(!oldJson.hasOwnProperty(i) || newJson[i] !== oldJson[i]) {
+            msg += i + "\n"
+        }
+    }
+    sendToChannel(msg);
+}
+
+/**
+ * Send message to CurryBot channel.
+ * @param msg
+ */
+function sendToChannel(msg) {
+    bot.channels.get(curryBotChannel).send(msg);
 }
 
 bot.login(config.token)
