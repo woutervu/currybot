@@ -356,13 +356,13 @@ function parseAudioJson() {
  * @param newJson
  */
 function compareJson(oldJson, newJson) {
-    let newSounds;
+    let newSounds = "";
     for(let i in newJson) {
         if(!oldJson.hasOwnProperty(i) || newJson[i] !== oldJson[i]) {
             newSounds += i + "\n"
         }
     }
-    if (newSounds) {
+    if (newSounds !== "") {
         let msg = "New sounds added: \n" + newSounds;
         sendToChannel(msg);
     }
