@@ -2,6 +2,10 @@ const Discord = require('discord.js');
 const fs = require('fs');
 const bot = new Discord.Client();
 const config = require("./config.json");
+
+const http = require('http');
+const CurryBotServer = require('currybot-api').CurryBotServer;
+
 const audioJson = 'audio.json';
 const statsJson = 'stats.json';
 
@@ -16,6 +20,22 @@ bot.on('ready', () => {
     console.log('CurryBot initiated.');
     parseAudioJson();
     setInterval(parseAudioJson, 10000);
+
+    // Setup the http server that the CurryBot API requires
+    const httpServer = http.createServer((request, response) => {
+        response.writeHead(404);
+        response.end();
+    });
+    httpServer.listen(8080, () => {
+        console.log('CurryBot API...online');
+    });
+
+    // Setup the CurryBot server
+    const curryServer = new CurryBotServer(httpServer);
+    curryServer.on('playRequest', (discordUserID, sound) => {
+        dispatchSound(audio[sound]);
+        updateStats(sound, discordUserID);
+    });
 });
 
 bot.on('message', message => {

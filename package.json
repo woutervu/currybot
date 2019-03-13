@@ -4,6 +4,7 @@
   "description": "A soundboard Discord bot that responds to commands.",
   "main": "index.js",
   "dependencies": {
+    "currybot-api": "git+ssh://git@github.com/woutervu/currybot-api.git",
     "discord.js": "^11.4.2",
     "ffmpeg": "0.0.4",
     "ffmpeg-binaries": "^4.0.0",
