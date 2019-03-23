@@ -133,6 +133,8 @@ function playSound(message, userId) {
 function dispatchSound(filename) {
     let connection = getConnection();
     dispatcherInstance = connection.playFile(config.audio_folder + filename);
+    console.log("Dispatching sound: " + filename);
+    console.log(config.audio_folder + filename);
     dispatcherInstance.on("start", () => {
         // Reset pausedTime to prevent incrementing delay.
         connection.player.streamingData.pausedTime = 0;
