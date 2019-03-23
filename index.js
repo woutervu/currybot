@@ -44,6 +44,7 @@ bot.on('message', message => {
         let commandMatch = false;
         let contentLC = message.content.toLowerCase();
         switch (contentLC) {
+            case 'summon cb':
             case 'cb init':
                 init(message);
                 commandMatch = true;
