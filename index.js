@@ -8,6 +8,8 @@ const CurryBotServer = require('currybot-api').CurryBotServer;
 
 const audioJson = 'audio.json';
 const statsJson = 'stats.json';
+const commandsJson = 'commands.json';
+const deleteTimeout = 5000;
 
 let voiceChannel = null;
 let globalConnection = null;
@@ -41,33 +43,40 @@ bot.on('ready', () => {
 bot.on('message', message => {
     if (message.channel.id === curryBotChannel)
     {
-        let commandMatch = false;
+        let commandMatch = true;
         let contentLC = message.content.toLowerCase();
         switch (contentLC) {
             case 'summon cb':
             case 'cb init':
                 init(message);
-                commandMatch = true;
                 break;
             case 'cb exit':
                 leave();
-                commandMatch = true;
                 break;
             case 'cb reboot':
                 leave();
                 init(message);
-                commandMatch = true;
+                break;
+            case 'soundsd':
+                availableSounds(message, 'D');
+                break;
+            case 'soundss':
+                availableSounds(message, 'S');
                 break;
             case 'sounds':
-                availableSounds(message);
-                commandMatch = true;
+            case 'soundsa':
+                availableSounds(message, 'A');
                 break;
             case 'stats':
                 printStats(message);
-                commandMatch = true;
+                break;
+            case 'help':
+            case 'halp':
+                printCommands(message);
                 break;
             default:
                 playSoundByMessage(message);
+                commandMatch = false;
         }
 
         if (commandMatch) {
@@ -96,12 +105,13 @@ function playSoundByMessage(message) {
 function playSound(message, userId) {
     let name = message.content;
     let nameLC = name.toLowerCase();
-    let dispatched = false;
+    let shouldDelete = false;
     let triggerKey;
     if (audio[nameLC]) {
         triggerKey = nameLC;
         dispatchSound(audio[triggerKey]);
-        dispatched = true;
+        // Only delete message if it equals trigger.
+        shouldDelete = true;
     }
     else {
         let BreakException = {};
@@ -114,11 +124,10 @@ function playSound(message, userId) {
             });
         } catch (e) {
             dispatchSound(audio[triggerKey]);
-            dispatched = true;
         }
     }
 
-    if (dispatched) {
+    if (shouldDelete) {
         updateStats(triggerKey, userId);
         message.delete(5000);
     }
@@ -144,13 +153,34 @@ function dispatchSound(filename) {
  * Get the available sounds.
  *
  * @param message
+ * @param mode
  */
-function availableSounds(message) {
+function availableSounds(message, mode) {
     fs.readFile(audioJson, 'utf8', function (err, data) {
         if (err) throw err;
         let audio = JSON.parse(data);
-        let sounds = "Soundboard currently contains: \n";
-        Object.keys(audio).forEach(function(key) {
+        let sounds = "Soundboard currently contains";
+        let audioKeys = Object.keys(audio);
+        switch (mode) {
+            case 'S':
+                // Sorted alphabetically
+                audioKeys = audioKeys.sort();
+                sounds += " (sorted alphabetically): \n";
+                break;
+
+            case 'D':
+                // Descending
+                audioKeys = audioKeys.reverse();
+                sounds += " (newest first): \n";
+                break;
+
+            case 'A':
+            default:
+                // Ascending
+                sounds += " (oldest first): \n";
+                break;
+        }
+        audioKeys.forEach(function(key) {
            sounds += key + "\n"
         });
         message.reply(sounds).then(function(reply) {
@@ -205,6 +235,37 @@ function printStats(message) {
             cleanupReplies(reply, message.author.id);
         }).catch(err => console.log(err));
     }).catch(err => console.log(err));
+}
+
+/**
+ * Parse the commands JSON and display friendly help message.
+ *
+ * @param message
+ */
+function printCommands(message) {
+    fs.readFile(commandsJson, 'utf8', function (err, data) {
+        const commands = JSON.parse(data);
+        let msg = "CurryBot always checks if your message matches a sound trigger or a registered command. Besides that, here are some helpful commands (plus any variations): \n \n";
+        Object.keys(commands).forEach(function (key) {
+            msg += '__**' + key + '**__:' + commands[key].description + "\n";
+            const variations = commands[key].variations;
+            if (Object.entries(variations).length > 0) {
+                Object.keys(variations).forEach(function (variationKey) {
+                    msg += '_' + variationKey + '_';
+                    if (variations[variationKey]) {
+                        msg += ': ' + variations[variationKey] + "\n";
+                    }
+                    else {
+                        msg += "\n";
+                    }
+                });
+            }
+            msg += "\n \n";
+        });
+        message.reply(msg).then(function (reply) {
+            cleanupReplies(reply, message.author.id);
+        }).catch(err => console.log(err));
+    });
 }
 
 /**
@@ -403,7 +464,7 @@ function sendToChannel(msg) {
  * @param message
  */
 function deleteMessage(message) {
-    message.delete(5000);
+    message.delete(deleteTimeout);
 }
 
 bot.login(config.token)

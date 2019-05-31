@@ -1,0 +1,34 @@
+{
+  "cb init": {
+    "description": "Initializes CurryBot and joins your current channel.",
+    "variations": {
+      "summon cb": ""
+    }
+  },
+  "cb exit": {
+    "description": "CurryBot leaves current channel.",
+    "variations": {}
+  },
+  "cb reboot": {
+    "description": "CurryBot leaves and rejoins the channel (must be initialized).",
+    "variations": {}
+  },
+  "sounds": {
+    "description": "Displays all available sound triggers (sorted in ascending order).",
+    "variations": {
+      "soundsA": "Sorts triggers in ascending order.",
+      "soundsD": "Sorts triggers in descending order.",
+      "soundsS": "Sorts triggers in alphabetical order."
+    }
+  },
+  "stats": {
+    "description": "Displays your statistics of triggers and playcount.",
+    "variations": {}
+  },
+  "help": {
+    "description": "Description of all available commands and their variations.",
+    "variations": {
+      "halp": ""
+    }
+  }
+}
