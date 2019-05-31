@@ -50,9 +50,11 @@ bot.on('message', message => {
             case 'cb init':
                 init(message);
                 break;
+            case 'destroy cb':
             case 'cb exit':
                 leave();
                 break;
+            case 'revive cb':
             case 'cb reboot':
                 leave();
                 init(message);
@@ -247,7 +249,7 @@ function printCommands(message) {
         const commands = JSON.parse(data);
         let msg = "CurryBot always checks if your message matches a sound trigger or a registered command. Besides that, here are some helpful commands (plus any variations): \n \n";
         Object.keys(commands).forEach(function (key) {
-            msg += '__**' + key + '**__:' + commands[key].description + "\n";
+            msg += '__**' + key + '**__: ' + commands[key].description + "\n";
             const variations = commands[key].variations;
             if (Object.entries(variations).length > 0) {
                 Object.keys(variations).forEach(function (variationKey) {

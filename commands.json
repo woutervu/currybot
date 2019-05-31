@@ -7,11 +7,15 @@
   },
   "cb exit": {
     "description": "CurryBot leaves current channel.",
-    "variations": {}
+    "variations": {
+      "destroy cb": ""
+    }
   },
   "cb reboot": {
     "description": "CurryBot leaves and rejoins the channel (must be initialized).",
-    "variations": {}
+    "variations": {
+      "revive cb": ""
+    }
   },
   "sounds": {
     "description": "Displays all available sound triggers (sorted in ascending order).",
