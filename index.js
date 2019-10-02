@@ -112,6 +112,7 @@ function playSound(message, userId) {
     if (audio[nameLC]) {
         triggerKey = nameLC;
         dispatchSound(audio[triggerKey]);
+        updateStats(triggerKey, userId);
         // Only delete message if it equals trigger.
         shouldDelete = true;
     }
@@ -126,11 +127,11 @@ function playSound(message, userId) {
             });
         } catch (e) {
             dispatchSound(audio[triggerKey]);
+            updateStats(triggerKey, userId);
         }
     }
 
     if (shouldDelete) {
-        updateStats(triggerKey, userId);
         message.delete(5000);
     }
 }

@@ -72,5 +72,9 @@
   "dogg": "dogg.mp3",
   "beacons": "beacons.mp3",
   "damage": "damage.mp3",
-  "mad": "umad.mp3"
+  "mad": "umad.mp3",
+  "stahp": "stahp.mp3",
+  "hurt": "hurt.mp3",
+  "time": "timetostop.mp3",
+  "books": "books.mp3"
 }
